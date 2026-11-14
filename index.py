@@ -209,6 +209,10 @@ def Imagen():
 	# Validar que los campos no esten vacios
 	if campoVacio(request.json["name"], request.json["data"], request.json["ext"], request.json["token"]):
 		return {"R":-1}
+	# Validar que la extension sea una imagen permitida
+	EXT_PERMITIDAS = {"png", "jpg", "jpeg", "gif", "webp"}
+	if request.json["ext"].lower().lstrip(".") not in EXT_PERMITIDAS:
+		return {"R":-1}
 	
 	dbcnf = loadDatabaseSettings('db.json');
 	db = mysql.connector.connect(
@@ -237,8 +241,17 @@ def Imagen():
 		db.close()
 		return {"R":-2}
 	id_Usuario = R[0][0];
+	# Decodificar el contenido y limitar el tamano (maximo 5 MB)
+	try:
+		contenido = base64.b64decode(request.json['data'].encode())
+	except Exception:
+		db.close()
+		return {"R":-1}
+	if len(contenido) > 5 * 1024 * 1024:
+		db.close()
+		return {"R":-1}
 	with open(f'tmp/{id_Usuario}',"wb") as imagen:
-		imagen.write(base64.b64decode(request.json['data'].encode()))
+		imagen.write(contenido)
 	
 	############################
 	############################
