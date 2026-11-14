@@ -3,6 +3,7 @@ import random
 import hashlib
 import secrets
 import hmac
+import re
 import mysql.connector
 import base64
 import shutil
@@ -46,6 +47,15 @@ def verifyPassword(password, almacenado):
 	except Exception:
 		return False
 
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+def campoVacio(*valores):
+	# Devuelve True si algun valor no es texto o esta vacio
+	for v in valores:
+		if not isinstance(v, str) or v.strip() == "":
+			return True
+	return False
+
 """
 */ 
 # Registro
@@ -72,11 +82,17 @@ def Registro():
 	if not request.json:
 		return {"R":-1}
 	R = 'uname' in request.json and 'email' in request.json and 'password' in request.json
-	# TODO checar si estan vacio los elementos del json
 	if not R:
 		return {"R":-1}
-	# TODO validar correo en json
-	# TODO Control de error de la DB
+	# Validar que los campos no esten vacios
+	if campoVacio(request.json["uname"], request.json["email"], request.json["password"]):
+		return {"R":-1}
+	# Validar formato de correo
+	if not EMAIL_RE.match(request.json["email"]):
+		return {"R":-1}
+	# Exigir una longitud minima de contrasena
+	if len(request.json["password"]) < 8:
+		return {"R":-1}
 	R = False
 	try:
 		with db.cursor() as cursor:
@@ -119,12 +135,11 @@ def Login():
 		return {"R":-1}
 	######/
 	R = 'uname' in request.json  and 'password' in request.json
-	# TODO checar si estan vacio los elementos del json
 	if not R:
 		return {"R":-1}
-	
-	# TODO validar correo en json
-	# TODO Control de error de la DB
+	# Validar que los campos no esten vacios
+	if campoVacio(request.json["uname"], request.json["password"]):
+		return {"R":-1}
 	R = False
 	try:
 		with db.cursor() as cursor:
@@ -189,8 +204,10 @@ def Imagen():
 		return {"R":-1}
 	######/
 	R = 'name' in request.json  and 'data' in request.json and 'ext' in request.json  and 'token' in request.json
-	# TODO checar si estan vacio los elementos del json
 	if not R:
+		return {"R":-1}
+	# Validar que los campos no esten vacios
+	if campoVacio(request.json["name"], request.json["data"], request.json["ext"], request.json["token"]):
 		return {"R":-1}
 	
 	dbcnf = loadDatabaseSettings('db.json');
@@ -215,6 +232,10 @@ def Imagen():
 		return {"R":-2}
 	
 	
+	# Si el token no existe, R viene vacio: evitar el error y rechazar
+	if not R:
+		db.close()
+		return {"R":-2}
 	id_Usuario = R[0][0];
 	with open(f'tmp/{id_Usuario}',"wb") as imagen:
 		imagen.write(base64.b64decode(request.json['data'].encode()))
