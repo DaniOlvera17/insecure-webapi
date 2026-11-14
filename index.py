@@ -147,12 +147,7 @@ def Login():
 		return {"R":-3}
 	
 	T = getToken();
-	#file_put_contents('/home/ladrilloadm/unstable/insecure-webapi/log','insert into AccesoToken values('.R[0].',"'.T.'",now())');
-	with open("/home/ladrilloadm/unstable/insecure-webapi/log","a") as log:
-		log.write(f'Delete from AccesoToken where id_Usuario = "{R[0][0]}"\n')
-		log.write(f'insert into AccesoToken values({R[0][0]},"{T}",now())\n')
-	
-	
+	# Los tokens de sesion no se escriben en archivos de texto plano.
 	try:
 		with db.cursor() as cursor:
 			cursor.execute('Delete from AccesoToken where id_Usuario = %s', (R[0][0],));
@@ -314,4 +309,4 @@ def Descargar():
 	return static_file(nombre_archivo, Path("img").resolve())
 
 if __name__ == '__main__':
-    run(host='localhost', port=8082, debug=True)
+    run(host='localhost', port=8082, debug=False)
