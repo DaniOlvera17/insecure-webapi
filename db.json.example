@@ -1,0 +1,6 @@
+{
+	"port":3306,
+	"dbname": "NOMBRE_DE_TU_BASE",
+	"user":"USUARIO_DE_TU_BASE",
+	"password":"TU_CONTRASENA"
+}

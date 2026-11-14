@@ -11,7 +11,7 @@ En dicha carpeta debes copiar los siguentes archivos
 - htaccess.txt
 
 1. Renombra htaccess.txt a .htaccess
-2. Edita el archivo db.json con los datos adecuados para tu Base de Datos
+2. Copia db.json.example a db.json y edita db.json con los datos de tu Base de Datos (db.json no se versiona: contiene credenciales)
 
 ## Cargar la base de datos
 
