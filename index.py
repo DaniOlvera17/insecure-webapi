@@ -1,6 +1,8 @@
 import json
 import random
 import hashlib
+import secrets
+import hmac
 import mysql.connector
 import base64
 import shutil
@@ -39,6 +41,21 @@ def getToken():
 	Q = m.hexdigest()
 	return f"{P[:20]}{Q[20:]}"
 
+def hashPassword(password):
+	# PBKDF2-HMAC-SHA256 con sal aleatoria por usuario
+	salt = secrets.token_hex(16)
+	dk = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), 200000).hex()
+	return f"pbkdf2_sha256$200000${salt}${dk}"
+
+def verifyPassword(password, almacenado):
+	# Compara en tiempo constante contra el hash guardado
+	try:
+		algo, iteraciones, salt, dk = almacenado.split('$')
+		calc = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), int(iteraciones)).hex()
+		return hmac.compare_digest(calc, dk)
+	except Exception:
+		return False
+
 """
 */ 
 # Registro
@@ -73,7 +90,7 @@ def Registro():
 	R = False
 	try:
 		with db.cursor() as cursor:
-			cursor.execute('insert into Usuario values(null,%s,%s,md5(%s))', (request.json["uname"], request.json["email"], request.json["password"]));
+			cursor.execute('insert into Usuario values(null,%s,%s,%s)', (request.json["uname"], request.json["email"], hashPassword(request.json["password"])));
 			R = cursor.lastrowid
 			db.commit()
 		db.close()
@@ -121,13 +138,18 @@ def Login():
 	R = False
 	try:
 		with db.cursor() as cursor:
-			print(f'Select id from  Usuario where uname ="{request.json["uname"]}" and password = md5("{request.json["password"]}")')
-			cursor.execute('Select id from Usuario where uname = %s and password = md5(%s)', (request.json["uname"], request.json["password"]));
-			R = cursor.fetchall()
+			cursor.execute('Select id, password from Usuario where uname = %s', (request.json["uname"],));
+			filas = cursor.fetchall()
 	except Exception as e: 
 		print(e)
 		db.close()
 		return {"R":-2}
+
+	# Verificar la contrasena en Python contra el hash PBKDF2 almacenado
+	if filas and verifyPassword(request.json["password"], filas[0][1]):
+		R = [(filas[0][0],)]
+	else:
+		R = False
 	
 	
 	if not R:
