@@ -269,7 +269,8 @@ def Descargar():
 	TKN = request.json['token'];
 	idImagen = request.json['id'];
 	
-	R = False
+	# Validar que el token exista y obtener el usuario dueno
+	id_Usuario = False
 	try:
 		with db.cursor() as cursor:
 			cursor.execute('select id_Usuario from AccesoToken where token = %s', (TKN,));
@@ -278,21 +279,27 @@ def Descargar():
 		print(e)
 		db.close()
 		return {"R":-2}
-		
-	
-	
-	# Buscar imagen y enviarla
-	
+	if not R:
+		db.close()
+		return {"R":-2}
+	id_Usuario = R[0][0]
+
+	# Buscar la imagen SOLO si pertenece a este usuario (evita IDOR)
 	try:
 		with db.cursor() as cursor:
-			cursor.execute('Select name,ruta from Imagen where id = %s', (idImagen,));
+			cursor.execute('Select name,ruta from Imagen where id = %s and id_Usuario = %s', (idImagen, id_Usuario));
 			R = cursor.fetchall()
 	except Exception as e: 
 		print(e)
 		db.close()
 		return {"R":-3}
-	print(Path("img").resolve(),R[0][1])
-	return static_file(R[0][1],Path(".").resolve())
+	db.close()
+	if not R:
+		return {"R":-3}
+
+	# Servir solo el nombre del archivo desde la carpeta img (evita acceso a otros archivos)
+	nombre_archivo = Path(R[0][1]).name
+	return static_file(nombre_archivo, Path("img").resolve())
 
 if __name__ == '__main__':
     run(host='localhost', port=8082, debug=True)
